@@ -9,6 +9,7 @@ import type { ProcessedFile } from './validation';
 
 /**
  * Extract .txt files from a ZIP archive
+ * Preserves the full relative path for folder structure
  */
 export async function extractZip(zipData: ArrayBuffer): Promise<ProcessedFile[]> {
   const zip = await JSZip.loadAsync(zipData);
@@ -24,11 +25,13 @@ export async function extractZip(zipData: ArrayBuffer): Promise<ProcessedFile[]>
 
     // Skip hidden files and macOS resource files
     const filename = relativePath.split('/').pop() || relativePath;
-    if (filename.startsWith('.') || filename.startsWith('__MACOSX')) return;
+    if (filename.startsWith('.')) return;
+    if (relativePath.includes('__MACOSX')) return;
 
     const promise = zipEntry.async('string').then((content) => {
       files.push({
-        name: filename,
+        // Preserve the full relative path for folder structure
+        name: relativePath,
         content,
       });
     });

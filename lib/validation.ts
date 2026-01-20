@@ -119,15 +119,28 @@ export function validateReferenceFile(
 
 /**
  * Sanitize a filename for safe storage/output
+ * Preserves folder structure but sanitizes each path component
  */
 export function sanitizeFilename(filename: string): string {
-  // Remove any path components
-  const basename = filename.split(/[\\/]/).pop() || filename;
+  // Normalize path separators to forward slashes
+  const normalized = filename.replace(/\\/g, '/');
 
-  // Replace unsafe characters
-  return basename
-    .replace(/[<>:"/\\|?*]/g, '_')
-    .replace(/\s+/g, '_')
-    .replace(/_{2,}/g, '_')
-    .trim();
+  // Split into path components, sanitize each, and rejoin
+  const parts = normalized.split('/');
+  const sanitizedParts = parts.map((part) =>
+    part
+      .replace(/[<>:"|?*]/g, '_')
+      .replace(/_{2,}/g, '_')
+      .trim()
+  );
+
+  return sanitizedParts.join('/');
+}
+
+/**
+ * Get just the filename from a path (for display purposes)
+ */
+export function getDisplayName(filepath: string): string {
+  const normalized = filepath.replace(/\\/g, '/');
+  return normalized.split('/').pop() || filepath;
 }

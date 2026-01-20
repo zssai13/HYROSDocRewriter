@@ -1,7 +1,7 @@
 import { NextRequest } from 'next/server';
 import { rewriteDocument, isApiKeyConfigured } from '@/lib/claude';
 import { buildSystemPrompt, buildUserMessage } from '@/lib/prompts';
-import { validateFiles, type ProcessedFile } from '@/lib/validation';
+import { validateFiles, getDisplayName, type ProcessedFile } from '@/lib/validation';
 import { createZipBase64 } from '@/lib/zip';
 import type { ReferenceSlots } from '@/lib/storage';
 
@@ -69,16 +69,18 @@ export async function POST(request: NextRequest) {
         for (let i = 0; i < validFiles.length; i++) {
           const file = validFiles[i];
           const current = i + 1;
+          // Get display name (just filename) for Claude and UI
+          const displayName = getDisplayName(file.name);
 
-          // Send progress event
+          // Send progress event with display name
           sendEvent('progress', {
             current,
             total,
-            filename: file.name,
+            filename: displayName,
           });
 
-          // Build user message
-          const userMessage = buildUserMessage(file.name, file.content);
+          // Build user message with just the filename (not full path)
+          const userMessage = buildUserMessage(displayName, file.content);
 
           // Call Claude
           const result = await rewriteDocument(systemPrompt, userMessage);
@@ -87,15 +89,15 @@ export async function POST(request: NextRequest) {
             sendEvent('error', {
               message: result.error || 'Unknown error during rewriting',
               failedAt: current,
-              filename: file.name,
+              filename: displayName,
             });
             controller.close();
             return;
           }
 
-          // Store the rewritten content
+          // Store the rewritten content with FULL PATH for ZIP structure
           rewrittenFiles.push({
-            name: file.name,
+            name: file.name, // Keep full path for folder structure in ZIP
             content: result.content || '',
           });
         }
