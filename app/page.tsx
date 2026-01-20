@@ -109,18 +109,27 @@ export default function Home() {
     setProgress({ current: 0, total: files.length, filename: '' });
 
     try {
+      console.log(`Starting processing of ${files.length} files...`);
+
+      const payload = JSON.stringify({
+        files,
+        references,
+      });
+      console.log(`Payload size: ${(payload.length / 1024).toFixed(1)} KB`);
+
       const response = await fetch('/api/rewrite', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          files,
-          references,
-        }),
+        body: payload,
       });
 
       if (!response.ok) {
-        throw new Error('Failed to start processing');
+        const errorText = await response.text();
+        console.error('Response error:', response.status, errorText);
+        throw new Error(`Failed to start processing: ${response.status}`);
       }
+
+      console.log('SSE connection established, reading stream...');
 
       // Handle SSE stream
       const reader = response.body?.getReader();
@@ -164,16 +173,19 @@ export default function Home() {
               const data = JSON.parse(eventData);
 
               if (eventType === 'progress') {
+                console.log(`Progress: ${data.current}/${data.total} - ${data.filename}`);
                 setProgress({
                   current: data.current,
                   total: data.total,
                   filename: data.filename,
                 });
               } else if (eventType === 'complete') {
+                console.log(`Complete! Processed ${data.totalProcessed} files, ZIP size: ${(data.zipBase64?.length / 1024).toFixed(1)} KB`);
                 setZipBase64(data.zipBase64);
                 setProgress((prev) => ({ ...prev, current: prev.total }));
                 setProcessingState('complete');
               } else if (eventType === 'error') {
+                console.error('Processing error from server:', data.message);
                 setProcessingError(data.message);
                 setProcessingState('error');
                 if (data.failedAt) {
