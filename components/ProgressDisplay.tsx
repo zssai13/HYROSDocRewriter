@@ -1,6 +1,6 @@
 'use client';
 
-export type ProcessingState = 'idle' | 'processing' | 'complete' | 'error';
+export type ProcessingState = 'idle' | 'preparing' | 'processing' | 'complete' | 'error';
 
 export interface ProgressDisplayProps {
   state: ProcessingState;
@@ -26,6 +26,28 @@ export default function ProgressDisplay({
   return (
     <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-6">
       <h2 className="text-lg font-semibold text-gray-800 mb-4">Progress</h2>
+
+      {state === 'preparing' && (
+        <div className="flex flex-col items-center justify-center py-6">
+          {/* Animated loading bar */}
+          <div className="w-full h-2 bg-gray-200 rounded-full overflow-hidden mb-4">
+            <div className="h-full bg-blue-500 rounded-full animate-pulse" style={{ width: '100%' }}>
+              <div className="h-full w-1/3 bg-blue-400 animate-[shimmer_1.5s_infinite]"
+                   style={{
+                     animation: 'shimmer 1.5s infinite',
+                     background: 'linear-gradient(90deg, transparent, rgba(255,255,255,0.4), transparent)',
+                   }}
+              />
+            </div>
+          </div>
+
+          <div className="flex items-center gap-3">
+            <div className="animate-spin rounded-full h-5 w-5 border-b-2 border-blue-500"></div>
+            <span className="text-gray-600">Preparing {total} files for processing...</span>
+          </div>
+          <p className="text-sm text-gray-400 mt-2">Uploading and connecting to Claude API</p>
+        </div>
+      )}
 
       {state === 'processing' && (
         <>

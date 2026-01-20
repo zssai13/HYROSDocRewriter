@@ -39,6 +39,17 @@ export default function ActionButtons({
         </button>
       )}
 
+      {/* Preparing indicator */}
+      {state === 'preparing' && (
+        <button
+          disabled
+          className="px-8 py-3 rounded-lg font-semibold text-white bg-blue-400 cursor-not-allowed flex items-center gap-2"
+        >
+          <div className="animate-spin rounded-full h-5 w-5 border-b-2 border-white"></div>
+          Preparing...
+        </button>
+      )}
+
       {/* Processing indicator */}
       {state === 'processing' && (
         <button

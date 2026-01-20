@@ -103,7 +103,7 @@ export default function Home() {
   const handleStart = useCallback(async () => {
     if (!canStart) return;
 
-    setProcessingState('processing');
+    setProcessingState('preparing');
     setProcessingError(undefined);
     setZipBase64(null);
     setProgress({ current: 0, total: files.length, filename: '' });
@@ -174,6 +174,8 @@ export default function Home() {
 
               if (eventType === 'progress') {
                 console.log(`Progress: ${data.current}/${data.total} - ${data.filename}`);
+                // Switch from 'preparing' to 'processing' on first progress event
+                setProcessingState('processing');
                 setProgress({
                   current: data.current,
                   total: data.total,
