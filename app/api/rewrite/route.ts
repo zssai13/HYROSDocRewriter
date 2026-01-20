@@ -10,6 +10,7 @@ export const maxDuration = 300; // 5 minutes for Vercel Pro
 interface RewriteRequest {
   files: ProcessedFile[];
   references: ReferenceSlots;
+  model?: string;
 }
 
 export async function POST(request: NextRequest) {
@@ -36,7 +37,7 @@ export async function POST(request: NextRequest) {
 
         // Parse request body
         const body: RewriteRequest = await request.json();
-        const { files, references } = body;
+        const { files, references, model } = body;
 
         // Validate references
         if (!references.rulesSystem) {
@@ -82,8 +83,8 @@ export async function POST(request: NextRequest) {
           // Build user message with just the filename (not full path)
           const userMessage = buildUserMessage(displayName, file.content);
 
-          // Call Claude
-          const result = await rewriteDocument(systemPrompt, userMessage);
+          // Call Claude with selected model
+          const result = await rewriteDocument(systemPrompt, userMessage, model);
 
           if (!result.success) {
             sendEvent('error', {

@@ -6,6 +6,20 @@ import UploadZone, { type UploadedFile } from '@/components/UploadZone';
 import ProgressDisplay, { type ProcessingState } from '@/components/ProgressDisplay';
 import ActionButtons from '@/components/ActionButtons';
 
+// Available models
+const MODELS = {
+  'claude-sonnet-4-20250514': {
+    name: 'Claude Sonnet 4',
+    description: 'Fast & reliable',
+  },
+  'claude-opus-4-5-20251101': {
+    name: 'Claude Opus 4.5',
+    description: 'Most capable (may be overloaded)',
+  },
+} as const;
+
+type ModelId = keyof typeof MODELS;
+
 interface References {
   rulesSystem: ReferenceFile | null;
   rewriteGuide: ReferenceFile | null;
@@ -13,6 +27,9 @@ interface References {
 }
 
 export default function Home() {
+  // Model selection state
+  const [selectedModel, setSelectedModel] = useState<ModelId>('claude-sonnet-4-20250514');
+
   // Reference slots state
   const [references, setReferences] = useState<References>({
     rulesSystem: null,
@@ -109,11 +126,12 @@ export default function Home() {
     setProgress({ current: 0, total: files.length, filename: '' });
 
     try {
-      console.log(`Starting processing of ${files.length} files...`);
+      console.log(`Starting processing of ${files.length} files with ${MODELS[selectedModel].name}...`);
 
       const payload = JSON.stringify({
         files,
         references,
+        model: selectedModel,
       });
       console.log(`Payload size: ${(payload.length / 1024).toFixed(1)} KB`);
 
@@ -209,7 +227,7 @@ export default function Home() {
       setProcessingError(error instanceof Error ? error.message : 'Unknown error occurred');
       setProcessingState('error');
     }
-  }, [canStart, files, references]);
+  }, [canStart, files, references, selectedModel]);
 
   // Download ZIP
   const handleDownload = useCallback(() => {
@@ -261,6 +279,34 @@ export default function Home() {
           <p className="text-gray-600">
             Batch convert documentation to the Rules System format using Claude AI
           </p>
+        </div>
+
+        {/* Model Selector */}
+        <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-4">
+          <div className="flex items-center justify-between">
+            <div className="flex items-center gap-2">
+              <span className="text-sm font-medium text-gray-700">Model:</span>
+              <div className="flex gap-2">
+                {(Object.entries(MODELS) as [ModelId, typeof MODELS[ModelId]][]).map(([id, model]) => (
+                  <button
+                    key={id}
+                    onClick={() => setSelectedModel(id)}
+                    disabled={processingState !== 'idle'}
+                    className={`px-4 py-2 rounded-lg text-sm font-medium transition-all ${
+                      selectedModel === id
+                        ? 'bg-blue-600 text-white'
+                        : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
+                    } ${processingState !== 'idle' ? 'opacity-50 cursor-not-allowed' : ''}`}
+                  >
+                    {model.name}
+                  </button>
+                ))}
+              </div>
+            </div>
+            <span className="text-xs text-gray-500">
+              {MODELS[selectedModel].description}
+            </span>
+          </div>
         </div>
 
         {/* Reference Slots */}
