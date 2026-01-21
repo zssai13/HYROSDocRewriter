@@ -1,10 +1,16 @@
 'use client';
 
-import { useCallback, useEffect, useState } from 'react';
+import { useCallback, useEffect, useState, useRef } from 'react';
 import ReferenceSlots, { type ReferenceFile } from '@/components/ReferenceSlots';
 import UploadZone, { type UploadedFile } from '@/components/UploadZone';
 import ProgressDisplay, { type ProcessingState } from '@/components/ProgressDisplay';
 import ActionButtons from '@/components/ActionButtons';
+import JSZip from 'jszip';
+
+interface ProcessedFile {
+  name: string;
+  content: string;
+}
 
 // Available models
 const MODELS = {
@@ -50,6 +56,10 @@ export default function Home() {
 
   // Result state
   const [zipBase64, setZipBase64] = useState<string | null>(null);
+
+  // Cancel support
+  const abortControllerRef = useRef<AbortController | null>(null);
+  const [completedFiles, setCompletedFiles] = useState<ProcessedFile[]>([]);
 
   // Load references on mount
   useEffect(() => {
@@ -120,9 +130,14 @@ export default function Home() {
   const handleStart = useCallback(async () => {
     if (!canStart) return;
 
+    // Create new abort controller for this request
+    const abortController = new AbortController();
+    abortControllerRef.current = abortController;
+
     setProcessingState('preparing');
     setProcessingError(undefined);
     setZipBase64(null);
+    setCompletedFiles([]);
     setProgress({ current: 0, total: files.length, filename: '' });
 
     try {
@@ -139,6 +154,7 @@ export default function Home() {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: payload,
+        signal: abortController.signal,
       });
 
       if (!response.ok) {
@@ -199,6 +215,15 @@ export default function Home() {
                   total: data.total,
                   filename: data.filename,
                 });
+              } else if (eventType === 'file_done') {
+                // Store completed file for potential partial download
+                console.log(`File done: ${data.filename} (${data.current}/${data.total})`);
+                setCompletedFiles((prev) => [...prev, data.file]);
+                setProgress({
+                  current: data.current,
+                  total: data.total,
+                  filename: data.filename,
+                });
               } else if (eventType === 'complete') {
                 console.log(`Complete! Processed ${data.totalProcessed} files, ZIP size: ${(data.zipBase64?.length / 1024).toFixed(1)} KB`);
                 setZipBase64(data.zipBase64);
@@ -223,11 +248,43 @@ export default function Home() {
         }
       }
     } catch (error) {
+      // Check if this was a cancellation
+      if (error instanceof Error && error.name === 'AbortError') {
+        console.log('Processing cancelled by user');
+        return; // Don't set error state - handleCancel handles this
+      }
       console.error('Processing error:', error);
       setProcessingError(error instanceof Error ? error.message : 'Unknown error occurred');
       setProcessingState('error');
+    } finally {
+      abortControllerRef.current = null;
     }
   }, [canStart, files, references, selectedModel]);
+
+  // Cancel processing and create partial ZIP
+  const handleCancel = useCallback(async () => {
+    if (abortControllerRef.current) {
+      abortControllerRef.current.abort();
+      abortControllerRef.current = null;
+    }
+
+    // If we have completed files, create a partial ZIP
+    if (completedFiles.length > 0) {
+      console.log(`Cancelled. Creating ZIP with ${completedFiles.length} completed files...`);
+
+      const zip = new JSZip();
+      for (const file of completedFiles) {
+        zip.file(file.name, file.content);
+      }
+
+      const zipBlob = await zip.generateAsync({ type: 'base64' });
+      setZipBase64(zipBlob);
+      setProcessingState('complete');
+      setProcessingError(`Cancelled after ${completedFiles.length} files. Partial results available.`);
+    } else {
+      setProcessingState('idle');
+    }
+  }, [completedFiles]);
 
   // Download ZIP
   const handleDownload = useCallback(() => {
@@ -341,9 +398,11 @@ export default function Home() {
           canStart={canStart}
           state={processingState}
           onStart={handleStart}
+          onCancel={handleCancel}
           onDownload={handleDownload}
           onReset={handleReset}
           hasZip={zipBase64 !== null}
+          completedCount={completedFiles.length}
         />
       </div>
     </div>

@@ -73,11 +73,12 @@ export async function POST(request: NextRequest) {
           // Get display name (just filename) for Claude and UI
           const displayName = getDisplayName(file.name);
 
-          // Send progress event with display name
+          // Send progress event with display name (file is being processed)
           sendEvent('progress', {
             current,
             total,
             filename: displayName,
+            status: 'processing',
           });
 
           // Build user message with just the filename (not full path)
@@ -96,10 +97,20 @@ export async function POST(request: NextRequest) {
             return;
           }
 
-          // Store the rewritten content with FULL PATH for ZIP structure
-          rewrittenFiles.push({
+          const rewrittenFile = {
             name: file.name, // Keep full path for folder structure in ZIP
             content: result.content || '',
+          };
+
+          // Store for final ZIP
+          rewrittenFiles.push(rewrittenFile);
+
+          // Send file_done event with the rewritten content (for partial downloads)
+          sendEvent('file_done', {
+            current,
+            total,
+            filename: displayName,
+            file: rewrittenFile,
           });
         }
 

@@ -6,18 +6,22 @@ export interface ActionButtonsProps {
   canStart: boolean;
   state: ProcessingState;
   onStart: () => void;
+  onCancel: () => void;
   onDownload: () => void;
   onReset: () => void;
   hasZip: boolean;
+  completedCount: number;
 }
 
 export default function ActionButtons({
   canStart,
   state,
   onStart,
+  onCancel,
   onDownload,
   onReset,
   hasZip,
+  completedCount,
 }: ActionButtonsProps) {
   return (
     <div className="flex flex-wrap gap-4 justify-center">
@@ -39,26 +43,45 @@ export default function ActionButtons({
         </button>
       )}
 
-      {/* Preparing indicator */}
+      {/* Preparing indicator + Cancel */}
       {state === 'preparing' && (
-        <button
-          disabled
-          className="px-8 py-3 rounded-lg font-semibold text-white bg-blue-400 cursor-not-allowed flex items-center gap-2"
-        >
-          <div className="animate-spin rounded-full h-5 w-5 border-b-2 border-white"></div>
-          Preparing...
-        </button>
+        <>
+          <button
+            disabled
+            className="px-8 py-3 rounded-lg font-semibold text-white bg-blue-400 cursor-not-allowed flex items-center gap-2"
+          >
+            <div className="animate-spin rounded-full h-5 w-5 border-b-2 border-white"></div>
+            Preparing...
+          </button>
+          <button
+            onClick={onCancel}
+            className="px-6 py-3 rounded-lg font-semibold text-red-600 bg-red-50 hover:bg-red-100 transition-all"
+          >
+            Cancel
+          </button>
+        </>
       )}
 
-      {/* Processing indicator */}
+      {/* Processing indicator + Cancel */}
       {state === 'processing' && (
-        <button
-          disabled
-          className="px-8 py-3 rounded-lg font-semibold text-white bg-blue-400 cursor-not-allowed flex items-center gap-2"
-        >
-          <div className="animate-spin rounded-full h-5 w-5 border-b-2 border-white"></div>
-          Processing...
-        </button>
+        <>
+          <button
+            disabled
+            className="px-8 py-3 rounded-lg font-semibold text-white bg-blue-400 cursor-not-allowed flex items-center gap-2"
+          >
+            <div className="animate-spin rounded-full h-5 w-5 border-b-2 border-white"></div>
+            Processing...
+          </button>
+          <button
+            onClick={onCancel}
+            className="px-6 py-3 rounded-lg font-semibold text-red-600 bg-red-50 hover:bg-red-100 transition-all flex items-center gap-2"
+          >
+            <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+            </svg>
+            Cancel{completedCount > 0 ? ` (${completedCount} done)` : ''}
+          </button>
+        </>
       )}
 
       {/* Download Button */}
